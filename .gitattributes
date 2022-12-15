@@ -1,2 +1,37 @@
-# Auto detect text files and perform LF normalization
-* text=auto
+import matplotlib.pyplot as plt
+import numpy as np
+import pandas as pd
+
+
+# Number of business days in a year
+bdays = 252
+
+# Load in SPY and AGG ETFs
+spy = pd.read_csv('SPY.csv').set_index('Date')
+agg = pd.read_csv('AGG.csv').set_index('Date')
+
+# Create the returns from the adjusted closing prices
+spy_rets = spy['Adj Close'].pct_change().dropna()
+agg_rets = agg['Adj Close'].pct_change().dropna()
+
+# Calculate the annualised rolling standard deviation (volatility)
+# for years worth of SPY and AGG data
+vol_spy = np.sqrt(bdays) * spy_rets.rolling(bdays).std().dropna()[bdays*10:]
+vol_agg = np.sqrt(bdays) * agg_rets.rolling(bdays).std().dropna()[bdays*10:]
+
+# Invert this volatility for SPY and AGG
+inv_vol_spy = 1.0 / vol_spy
+inv_vol_agg = 1.0 / vol_agg
+
+# Take the total of the inverse of the vol
+tot_inv_vol = inv_vol_spy + inv_vol_agg
+
+# Weight proportionally the inverse volatility of each instrument
+w_inv_vol_spy = inv_vol_spy / tot_inv_vol
+w_inv_vol_agg = inv_vol_agg / tot_inv_vol
+
+# Plot the inverse vol weightings (which now sum to one always)
+# for SPY and AGG
+df = pd.DataFrame([w_inv_vol_spy, w_inv_vol_agg]).T
+df.columns = ['SPY_weight', 'AGG_weight']
+df.plot()
